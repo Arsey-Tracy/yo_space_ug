@@ -1,26 +1,133 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-black: #091A11;
+  --color-white: #FFFFFF;
+  --color-primary: #DD5400;
+  --color-hero-ui: #F4E0E3;
+  --color-icon-bg: #F2E0CC;
+  --color-page-bg: #FAF7EE;
+
+  --color-background: var(--page-bg);
+  --color-foreground: var(--black);
+  --color-card: var(--white);
+  --color-card-foreground: var(--black);
+  --color-popover: var(--white);
+  --color-popover-foreground: var(--black);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--white);
+  --color-secondary: var(--hero-ui);
+  --color-secondary-foreground: var(--black);
+  --color-muted: var(--icon-bg);
+  --color-muted-foreground: var(--black);
+  --color-accent: var(--hero-ui);
+  --color-accent-foreground: var(--black);
+  --color-destructive: #DC2626;
+  --color-border: var(--icon-bg);
+  --color-input: var(--icon-bg);
+  --color-ring: var(--primary);
+  --color-chart-1: var(--primary);
+  --color-chart-2: var(--hero-ui);
+  --color-chart-3: var(--icon-bg);
+  --color-chart-4: var(--page-bg);
+  --color-chart-5: var(--black);
+  --color-sidebar-ring: var(--icon-bg);
+  --color-sidebar-border: var(--icon-bg);
+  --color-sidebar-accent-foreground: var(--black);
+  --color-sidebar-accent: var(--hero-ui);
+  --color-sidebar-primary-foreground: var(--white);
+  --color-sidebar-primary: var(--primary);
+  --color-sidebar-foreground: var(--black);
+  --color-sidebar: var(--white);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-geist-sans);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --black: #091A11;
+  --white: #FFFFFF;
+  --primary: #DD5400;
+  --hero-ui: #F4E0E3;
+  --icon-bg: #F2E0CC;
+  --page-bg: #FAF7EE;
+  --radius: 0.625rem;
+  --font-geist-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  --font-geist-mono: "Fira Code", "Courier New", monospace;
+}
+
+.dark {
+  --black: #FFFFFF;
+  --white: #091A11;
+  --primary: #FF6B35;
+  --hero-ui: #1A2A1F;
+  --icon-bg: #1F2E24;
+  --page-bg: #091A11;
+  --color-background: var(--page-bg);
+  --color-foreground: var(--black);
+  --color-card: var(--white);
+  --color-card-foreground: var(--black);
+  --color-popover: var(--white);
+  --color-popover-foreground: var(--black);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--white);
+  --color-secondary: var(--hero-ui);
+  --color-secondary-foreground: var(--black);
+  --color-muted: var(--icon-bg);
+  --color-muted-foreground: var(--black);
+  --color-accent: var(--hero-ui);
+  --color-accent-foreground: var(--black);
+  --color-border: var(--icon-bg);
+  --color-input: var(--icon-bg);
+  --color-ring: var(--primary);
+  --color-sidebar: var(--white);
+  --color-sidebar-foreground: var(--black);
+  --color-sidebar-primary: var(--primary);
+  --color-sidebar-primary-foreground: var(--white);
+  --color-sidebar-accent: var(--hero-ui);
+  --color-sidebar-accent-foreground: var(--black);
+  --color-sidebar-border: var(--icon-bg);
+  --color-sidebar-ring: var(--icon-bg);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.animate-fade-in {
+  animation: fade-in 1s ease;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }

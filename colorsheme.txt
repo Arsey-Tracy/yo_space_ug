@@ -1,0 +1,6 @@
+#091A11 // black
+#FFFFFF // white use interchangebly with black
+#DD5400 // primary color
+#F4E0E3 // also a subtle background on some elements like the arounded ui component with small information just on the heroe section
+#F2E0CC // to be used on icon backgrounds
+#FAF7EE // to be used for the entire background of the webpage
