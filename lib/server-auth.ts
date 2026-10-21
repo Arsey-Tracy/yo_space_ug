@@ -6,7 +6,10 @@ export const REFRESH_COOKIE = "yo_refresh";
 export const ACTIVE_ORGANIZATION_COOKIE = "yo_active_org";
 
 export function backendUrl(path: string) {
-    const baseUrl = (process.env.DJANGO_API_URL ?? "http://127.0.0.1:8000").replace(/\/+$/, "");
+    const defaultBaseUrl = process.env.NODE_ENV === "production"
+        ? "https://yo-space-2g.onrender.com"
+        : "http://127.0.0.1:8000";
+    const baseUrl = (process.env.DJANGO_API_URL || defaultBaseUrl).replace(/\/+$/, "");
     return `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
@@ -92,11 +95,27 @@ export async function authenticatedBackendRequest(path: string, init: RequestIni
 }
 
 export async function authJsonResponse(response: Response) {
-    const payload = await response.json() as {
+    const responseText = await response.text();
+    let payload: {
         tokens?: { access?: string; refresh?: string };
         organization?: { id?: number | string } | null;
         [key: string]: unknown;
     };
+    try {
+        payload = responseText ? JSON.parse(responseText) : {};
+    } catch {
+        return NextResponse.json(
+            { detail: "Authentication service returned an invalid response." },
+            { status: response.ok ? 502 : response.status },
+        );
+    }
+
+    if (!responseText && !response.ok) {
+        return NextResponse.json(
+            { detail: "Authentication service returned an empty error response." },
+            { status: response.status },
+        );
+    }
 
     if (response.ok && (!payload.tokens?.access || !payload.tokens?.refresh)) {
         return NextResponse.json(

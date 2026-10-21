@@ -1,7 +1,10 @@
 # Django authentication integration
 
-Set `DJANGO_API_URL` in the frontend environment to the Django origin (for example,
-`http://127.0.0.1:8000` for local development). Next.js server routes proxy
+`DJANGO_API_URL` is optional. By default, the frontend uses
+`http://127.0.0.1:8000` in development and
+`https://yo-space-2g.onrender.com` in production. Set `DJANGO_API_URL` to
+override either default (for example, to use a different local Django port).
+Next.js server routes proxy
 registration, login, organization onboarding, and authenticated API requests to
 Django; browser JavaScript never receives the JWTs. The access and refresh tokens
 and active organization ID are stored in `HttpOnly`, `SameSite=Lax` cookies, with
