@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import Link from "next/link";
 import { CalendarClock, MessageSquare, Send } from "lucide-react";
 
 import { get, post } from "@/lib/api/api";
@@ -141,6 +142,12 @@ export default function SmsPage() {
                 <p className="mt-1 text-sm text-slate-600">
                     Send a message to a Space or schedule it for later.
                 </p>
+                <Link
+                    href="/app/wallet"
+                    className="mt-2 inline-flex text-sm font-medium text-orange-700 hover:text-orange-800"
+                >
+                    Check your SMS wallet or top up credits
+                </Link>
             </header>
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
@@ -276,7 +283,9 @@ export default function SmsPage() {
                             <CalendarClock className="size-4" />
                         )}
                         {submitting
-                            ? "Saving..."
+                            ? deliveryMode === "now"
+                                ? "Sending..."
+                                : "Scheduling..."
                             : deliveryMode === "now"
                               ? "Send broadcast"
                               : "Schedule broadcast"}

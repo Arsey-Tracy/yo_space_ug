@@ -1,5 +1,22 @@
 export type APIOptions = RequestInit;
 
+function formatError(value: unknown): string | undefined {
+    if (typeof value === "string" && value.trim()) return value;
+    if (Array.isArray(value)) {
+        return value.map(formatError).filter(Boolean).join(" ");
+    }
+    if (value && typeof value === "object") {
+        return Object.entries(value)
+            .map(([key, entry]) => {
+                const message = formatError(entry);
+                return message ? `${key}: ${message}` : undefined;
+            })
+            .filter(Boolean)
+            .join(" ");
+    }
+    return undefined;
+}
+
 async function request<T>(path: string, options: APIOptions = {}): Promise<T> {
     const normalizedPath = path.replace(/^\/+/, "");
     const headers = new Headers(options.headers);
@@ -12,9 +29,22 @@ async function request<T>(path: string, options: APIOptions = {}): Promise<T> {
         headers,
         credentials: "same-origin",
     });
-    const payload = response.status === 204 ? undefined : await response.json();
+    const responseText = response.status === 204 ? "" : await response.text();
+    let payload: unknown;
+    if (responseText) {
+        try {
+            payload = JSON.parse(responseText);
+        } catch {
+            payload = responseText;
+        }
+    }
     if (!response.ok) {
-        const detail = payload?.detail ?? `API request failed (${response.status}).`;
+        const detail =
+            formatError(
+                payload && typeof payload === "object" && "detail" in payload
+                    ? payload.detail
+                    : payload,
+            ) || `API request failed (${response.status}).`;
         throw new Error(detail);
     }
     return payload as T;
