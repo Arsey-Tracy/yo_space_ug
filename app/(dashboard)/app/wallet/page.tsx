@@ -72,16 +72,32 @@ export default function WalletPage() {
     );
 
     const loadWallet = useCallback(async () => {
-        const [walletResponse, bundleResponse, transactionResponse] = await Promise.all([
-            get<WalletBalance>("billing/current/"),
+        const walletResponse = await get<WalletBalance>("billing/current/");
+        setBalance(walletResponse);
+
+        const [bundleResult, transactionResult] = await Promise.allSettled([
             get<Bundle[]>("billing/sms-bundles/"),
             get<ApiList<WalletTransaction> | WalletTransaction[]>(
                 "billing/wallet/transactions/",
             ),
         ]);
-        setBalance(walletResponse);
-        setBundles(bundleResponse);
-        setTransactions(listResults(transactionResponse));
+
+        const loadErrors: string[] = [];
+        if (bundleResult.status === "fulfilled") {
+            setBundles(bundleResult.value);
+        } else {
+            loadErrors.push("SMS bundles could not be loaded.");
+        }
+
+        if (transactionResult.status === "fulfilled") {
+            setTransactions(listResults(transactionResult.value));
+        } else {
+            loadErrors.push("Wallet activity could not be loaded.");
+        }
+
+        if (loadErrors.length) {
+            setError(loadErrors.join(" "));
+        }
     }, []);
 
     useEffect(() => {
