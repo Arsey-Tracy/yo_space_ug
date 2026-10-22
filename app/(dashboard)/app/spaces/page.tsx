@@ -2,9 +2,24 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { Download, Plus, Save, Trash2, Upload, Users } from "lucide-react";
+import { Download, Ellipsis, Pencil, Plus, Save, Trash2, Upload, UserRoundPlus, Users } from "lucide-react";
 
 import { del, get, patch, post } from "@/lib/api/api";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type Space = {
     id: number;
@@ -48,6 +63,9 @@ export default function SpacesPage() {
     const [loading, setLoading] = useState(true);
     const [savingSpace, setSavingSpace] = useState(false);
     const [savingMember, setSavingMember] = useState(false);
+    const [spaceDialogOpen, setSpaceDialogOpen] = useState(false);
+    const [memberDialogOpen, setMemberDialogOpen] = useState(false);
+    const [editingMember, setEditingMember] = useState<SpaceMember | null>(null);
     const [error, setError] = useState("");
     const [notice, setNotice] = useState("");
 
@@ -96,6 +114,7 @@ export default function SpacesPage() {
                         if (active) setMembers(listResults(memberResponse));
                     }
                 }
+
             } catch (loadError) {
                 if (active) setError(getErrorMessage(loadError));
             } finally {
@@ -153,6 +172,7 @@ export default function SpacesPage() {
                 });
                 await loadMembers(createdSpace.id);
             }
+            setSpaceDialogOpen(false);
         } catch (saveError) {
             setError(getErrorMessage(saveError));
         } finally {
@@ -160,33 +180,34 @@ export default function SpacesPage() {
         }
     }
 
-    async function handleDeleteSpace() {
-        if (!selectedSpace) return;
+    async function handleDeleteSpace(spaceToDelete = selectedSpace) {
+        if (!spaceToDelete) return;
         const confirmed = window.confirm(
-            `Delete "${selectedSpace.name}" and its members? This cannot be undone.`,
+            `Delete "${spaceToDelete.name}" and its members? This cannot be undone.`,
         );
         if (!confirmed) return;
 
         setError("");
         setNotice("");
         try {
-            await del(`spaces/${selectedSpace.id}/`);
+            await del(`spaces/${spaceToDelete.id}/`);
             setNotice("Space deleted.");
-            setSpaceForm(emptySpace);
-            setMembers([]);
+            const wasSelected = selectedSpaceId === spaceToDelete.id;
             const remainingSpaces = await loadSpaces();
-            const nextSpace = remainingSpaces[0];
-            if (nextSpace) {
-                setSelectedSpaceId(nextSpace.id);
-                setSpaceForm({
-                    name: nextSpace.name,
-                    description: nextSpace.description,
-                    is_public: nextSpace.is_public,
-                    is_active: nextSpace.is_active,
-                });
-                await loadMembers(nextSpace.id);
-            } else {
-                setSelectedSpaceId(null);
+            if (wasSelected) {
+                const nextSpace = remainingSpaces[0];
+                setSpaceForm(
+                    nextSpace
+                        ? {
+                              name: nextSpace.name,
+                              description: nextSpace.description,
+                              is_public: nextSpace.is_public,
+                              is_active: nextSpace.is_active,
+                          }
+                        : emptySpace,
+                );
+                setMembers([]);
+                if (nextSpace) await loadMembers(nextSpace.id);
             }
         } catch (deleteError) {
             setError(getErrorMessage(deleteError));
@@ -201,15 +222,25 @@ export default function SpacesPage() {
         setSavingMember(true);
 
         try {
-            await post<SpaceMember>(`spaces/${selectedSpace.id}/members/`, {
+            const payload = {
                 name: memberName.trim(),
                 phone_number: memberPhone.trim(),
                 role: memberRole,
-            });
+            };
+            if (editingMember) {
+                await patch<SpaceMember>(
+                    `spaces/${selectedSpace.id}/members/${editingMember.id}/`,
+                    payload,
+                );
+            } else {
+                await post<SpaceMember>(`spaces/${selectedSpace.id}/members/`, payload);
+            }
             setMemberName("");
             setMemberPhone("");
             setMemberRole("member");
-            setNotice("Member added.");
+            setEditingMember(null);
+            setMemberDialogOpen(false);
+            setNotice(editingMember ? "Member updated." : "Member added.");
             await loadMembers(selectedSpace.id);
             await loadSpaces();
         } catch (memberError) {
@@ -225,6 +256,40 @@ export default function SpacesPage() {
         setMembers([]);
         setError("");
         setNotice("");
+        setSpaceDialogOpen(true);
+    }
+
+    function handleEditMember(member: SpaceMember) {
+        setEditingMember(member);
+        setMemberName(member.name ?? "");
+        setMemberPhone(member.phone_number);
+        setMemberRole(member.role);
+        setError("");
+        setNotice("");
+        setMemberDialogOpen(true);
+    }
+
+    function handleAddMemberOpen() {
+        setEditingMember(null);
+        setMemberName("");
+        setMemberPhone("");
+        setMemberRole("member");
+        setError("");
+        setNotice("");
+        setMemberDialogOpen(true);
+    }
+
+    function handleEditSpace(space: Space) {
+        setSelectedSpaceId(space.id);
+        setSpaceForm({
+            name: space.name,
+            description: space.description,
+            is_public: space.is_public,
+            is_active: space.is_active,
+        });
+        setError("");
+        setNotice("");
+        setSpaceDialogOpen(true);
     }
 
     async function handleRemoveMember(member: SpaceMember) {
@@ -336,14 +401,21 @@ export default function SpacesPage() {
                     ) : (
                         <ul className="space-y-1">
                             {spaces.map((space) => (
-                                <li key={space.id}>
+                                <li
+                                    key={space.id}
+                                    className={`flex items-center gap-1 rounded-lg pr-1 ${
+                                        selectedSpaceId === space.id
+                                            ? "bg-orange-50"
+                                            : "hover:bg-slate-50"
+                                    }`}
+                                >
                                     <button
                                         type="button"
                                         onClick={() => void handleSelectSpace(space)}
-                                        className={`w-full rounded-lg px-3 py-2 text-left transition ${
+                                        className={`min-w-0 flex-1 rounded-lg px-3 py-2 text-left transition ${
                                             selectedSpaceId === space.id
-                                                ? "bg-orange-50 text-orange-800"
-                                                : "text-slate-700 hover:bg-slate-50"
+                                                ? "text-orange-800"
+                                                : "text-slate-700"
                                         }`}
                                     >
                                         <span className="block truncate text-sm font-medium">
@@ -355,6 +427,32 @@ export default function SpacesPage() {
                                             {space.is_active ? "Active" : "Inactive"}
                                         </span>
                                     </button>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger
+                                            className="flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                                            aria-label={`Options for ${space.name}`}
+                                        >
+                                            <Ellipsis className="size-4" />
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-40">
+                                            <DropdownMenuItem onClick={() => void handleSelectSpace(space)}>
+                                                <Users className="size-4" />
+                                                Manage
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleEditSpace(space)}>
+                                                <Pencil className="size-4" />
+                                                Edit
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem
+                                                variant="destructive"
+                                                onClick={() => void handleDeleteSpace(space)}
+                                            >
+                                                <Trash2 className="size-4" />
+                                                Delete
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </li>
                             ))}
                         </ul>
@@ -362,32 +460,52 @@ export default function SpacesPage() {
                 </section>
 
                 <div className="space-y-6">
-                    <form
-                        onSubmit={handleSaveSpace}
-                        className="space-y-4 rounded-xl border border-slate-200 bg-white p-5"
-                    >
-                        <div className="flex items-center justify-between gap-4">
-                            <div>
-                                <h2 className="font-semibold text-slate-950">
-                                    {selectedSpace ? "Space details" : "Create a Space"}
-                                </h2>
+                    {selectedSpace ? (
+                        <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-5">
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h2 className="text-lg font-semibold text-slate-950">{selectedSpace.name}</h2>
+                                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${selectedSpace.is_active ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-600"}`}>
+                                        {selectedSpace.is_active ? "Active" : "Inactive"}
+                                    </span>
+                                </div>
                                 <p className="mt-1 text-sm text-slate-500">
-                                    {selectedSpace
-                                        ? "Update the name, description, and visibility."
-                                        : "Set up a Space to organize your community."}
+                                    {selectedSpace.description || "Manage this Space and its members."}
                                 </p>
                             </div>
-                            {selectedSpace && (
-                                <button
-                                    type="button"
-                                    onClick={handleDeleteSpace}
-                                    className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
-                                >
-                                    <Trash2 className="size-4" />
-                                    Delete
-                                </button>
-                            )}
-                        </div>
+                            <button
+                                type="button"
+                                onClick={() => handleEditSpace(selectedSpace)}
+                                className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                            >
+                                <Pencil className="size-4" />
+                                Edit Space
+                            </button>
+                        </section>
+                    ) : (
+                        <section className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
+                            <Users className="mx-auto size-7 text-slate-400" />
+                            <p className="mt-3 text-sm font-medium text-slate-800">Choose a Space to manage</p>
+                            <p className="mt-1 text-sm text-slate-500">
+                                Select an existing Space or create a new one to get started.
+                            </p>
+                        </section>
+                    )}
+
+                    <Dialog open={spaceDialogOpen} onOpenChange={setSpaceDialogOpen}>
+                        <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto">
+                            <DialogHeader>
+                                <DialogTitle>{selectedSpace ? "Edit Space" : "Create a Space"}</DialogTitle>
+                                <DialogDescription>
+                                    {selectedSpace
+                                        ? "Update the Space name, description, and visibility."
+                                        : "Set up a Space to organize your community."}
+                                </DialogDescription>
+                            </DialogHeader>
+                    <form
+                        onSubmit={handleSaveSpace}
+                        className="space-y-4"
+                    >
 
                         <div>
                             <label htmlFor="space-name" className="mb-1 block text-sm font-medium text-slate-800">
@@ -485,6 +603,8 @@ export default function SpacesPage() {
                                   : "Create Space"}
                         </button>
                     </form>
+                        </DialogContent>
+                    </Dialog>
 
                     {selectedSpace && (
                         <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
@@ -522,13 +642,34 @@ export default function SpacesPage() {
                                         <Download className="size-4" />
                                         Export
                                     </a>
+                                    <button
+                                        type="button"
+                                        onClick={handleAddMemberOpen}
+                                        className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-orange-700"
+                                    >
+                                        <UserRoundPlus className="size-4" />
+                                        Add member
+                                    </button>
                                 </div>
                             </div>
 
-                            <form
-                                onSubmit={handleAddMember}
-                                className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_180px_auto]"
+                            <Dialog
+                                open={memberDialogOpen}
+                                onOpenChange={(open) => {
+                                    setMemberDialogOpen(open);
+                                    if (!open) setEditingMember(null);
+                                }}
                             >
+                                <DialogContent className="max-w-lg">
+                                    <DialogHeader>
+                                        <DialogTitle>{editingMember ? "Edit member" : "Add a member"}</DialogTitle>
+                                        <DialogDescription>
+                                            {editingMember
+                                                ? `Update contact details for ${editingMember.name || editingMember.phone_number}.`
+                                                : `Add a person to ${selectedSpace.name}.`}
+                                        </DialogDescription>
+                                    </DialogHeader>
+                            <form onSubmit={handleAddMember} className="space-y-4">
                                 <div>
                                     <label htmlFor="member-name" className="mb-1 block text-xs font-medium text-slate-700">
                                         Full name
@@ -573,14 +714,27 @@ export default function SpacesPage() {
                                         <option value="secretary">Secretary</option>
                                     </select>
                                 </div>
-                                <button
-                                    type="submit"
-                                    disabled={savingMember}
-                                    className="self-end rounded-md bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    {savingMember ? "Adding..." : "Add member"}
-                                </button>
+                                <DialogFooter>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMemberDialogOpen(false)}
+                                        className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={savingMember}
+                                        className="rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {savingMember
+                                            ? editingMember ? "Saving..." : "Adding..."
+                                            : editingMember ? "Save changes" : "Add member"}
+                                    </button>
+                                </DialogFooter>
                             </form>
+                                </DialogContent>
+                            </Dialog>
 
                             {members.length === 0 ? (
                                 <p className="py-3 text-sm text-slate-500">
@@ -610,14 +764,28 @@ export default function SpacesPage() {
                                                         {member.role}
                                                     </td>
                                                     <td className="py-3 text-right">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => void handleRemoveMember(member)}
-                                                            aria-label={`Remove ${member.name || member.phone_number}`}
-                                                            className="rounded-md p-2 text-red-700 hover:bg-red-50"
-                                                        >
-                                                            <Trash2 className="size-4" />
-                                                        </button>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger
+                                                                className="inline-flex size-8 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                                                                aria-label={`Options for ${member.name || member.phone_number}`}
+                                                            >
+                                                                <Ellipsis className="size-4" />
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end" className="w-40">
+                                                                <DropdownMenuItem onClick={() => handleEditMember(member)}>
+                                                                    <Pencil className="size-4" />
+                                                                    Edit
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem
+                                                                    variant="destructive"
+                                                                    onClick={() => void handleRemoveMember(member)}
+                                                                >
+                                                                    <Trash2 className="size-4" />
+                                                                    Remove
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
                                                     </td>
                                                 </tr>
                                             ))}
