@@ -47,6 +47,7 @@ export default function SpacesPage() {
     const [memberRole, setMemberRole] = useState("member");
     const [loading, setLoading] = useState(true);
     const [savingSpace, setSavingSpace] = useState(false);
+    const [savingMember, setSavingMember] = useState(false);
     const [error, setError] = useState("");
     const [notice, setNotice] = useState("");
 
@@ -197,6 +198,7 @@ export default function SpacesPage() {
         if (!selectedSpace) return;
         setError("");
         setNotice("");
+        setSavingMember(true);
 
         try {
             await post<SpaceMember>(`spaces/${selectedSpace.id}/members/`, {
@@ -212,7 +214,17 @@ export default function SpacesPage() {
             await loadSpaces();
         } catch (memberError) {
             setError(getErrorMessage(memberError));
+        } finally {
+            setSavingMember(false);
         }
+    }
+
+    function handleCreateSpace() {
+        setSelectedSpaceId(null);
+        setSpaceForm(emptySpace);
+        setMembers([]);
+        setError("");
+        setNotice("");
     }
 
     async function handleRemoveMember(member: SpaceMember) {
@@ -267,6 +279,14 @@ export default function SpacesPage() {
                 <p className="mt-1 text-sm text-slate-600">
                     Create and manage community Spaces and their members.
                 </p>
+                <button
+                    type="button"
+                    onClick={handleCreateSpace}
+                    className="mt-4 inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+                >
+                    <Plus className="size-4" />
+                    Create Space
+                </button>
             </header>
 
             {error && (
@@ -286,14 +306,8 @@ export default function SpacesPage() {
                         <h2 className="font-semibold text-slate-950">Your Spaces</h2>
                         <button
                             type="button"
-                            onClick={() => {
-                                setSelectedSpaceId(null);
-                                setSpaceForm(emptySpace);
-                                setMembers([]);
-                                setError("");
-                                setNotice("");
-                            }}
-                            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-orange-700 hover:bg-orange-50"
+                            onClick={handleCreateSpace}
+                            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-orange-700 transition hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
                         >
                             <Plus className="size-4" />
                             New
@@ -303,9 +317,22 @@ export default function SpacesPage() {
                     {loading ? (
                         <p className="py-4 text-sm text-slate-500">Loading Spaces...</p>
                     ) : spaces.length === 0 ? (
-                        <p className="py-4 text-sm text-slate-500">
-                            No Spaces yet. Create one to get started.
-                        </p>
+                        <div className="rounded-lg border border-dashed border-slate-300 px-4 py-6 text-center">
+                            <Users className="mx-auto size-6 text-slate-400" />
+                            <p className="mt-2 text-sm font-medium text-slate-700">
+                                No Spaces yet
+                            </p>
+                            <p className="mt-1 text-xs leading-5 text-slate-500">
+                                Create a Space to organize members and send messages.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={handleCreateSpace}
+                                className="mt-3 text-sm font-semibold text-orange-700 hover:text-orange-800"
+                            >
+                                Create your first Space
+                            </button>
+                        </div>
                     ) : (
                         <ul className="space-y-1">
                             {spaces.map((space) => (
@@ -340,9 +367,16 @@ export default function SpacesPage() {
                         className="space-y-4 rounded-xl border border-slate-200 bg-white p-5"
                     >
                         <div className="flex items-center justify-between gap-4">
-                            <h2 className="font-semibold text-slate-950">
-                                {selectedSpace ? "Space details" : "Create a Space"}
-                            </h2>
+                            <div>
+                                <h2 className="font-semibold text-slate-950">
+                                    {selectedSpace ? "Space details" : "Create a Space"}
+                                </h2>
+                                <p className="mt-1 text-sm text-slate-500">
+                                    {selectedSpace
+                                        ? "Update the name, description, and visibility."
+                                        : "Set up a Space to organize your community."}
+                                </p>
+                            </div>
                             {selectedSpace && (
                                 <button
                                     type="button"
@@ -357,17 +391,18 @@ export default function SpacesPage() {
 
                         <div>
                             <label htmlFor="space-name" className="mb-1 block text-sm font-medium text-slate-800">
-                                Name
+                                Space name <span className="text-red-600">*</span>
                             </label>
                             <input
                                 id="space-name"
                                 required
                                 maxLength={100}
                                 value={spaceForm.name}
+                                placeholder="e.g. Community members"
                                 onChange={(event) =>
                                     setSpaceForm({ ...spaceForm, name: event.target.value })
                                 }
-                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
                             />
                         </div>
 
@@ -379,18 +414,19 @@ export default function SpacesPage() {
                                 id="space-description"
                                 rows={3}
                                 value={spaceForm.description}
+                                placeholder="Add a short description to help identify this Space."
                                 onChange={(event) =>
                                     setSpaceForm({
                                         ...spaceForm,
                                         description: event.target.value,
                                     })
                                 }
-                                className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                                className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
                             />
                         </div>
 
-                        <div className="flex flex-wrap gap-5">
-                            <label className="flex items-center gap-2 text-sm text-slate-700">
+                        <div className="flex flex-wrap gap-3">
+                            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50">
                                 <input
                                     type="checkbox"
                                     checked={spaceForm.is_public}
@@ -402,9 +438,14 @@ export default function SpacesPage() {
                                     }
                                     className="accent-orange-600"
                                 />
-                                Public
+                                <span>
+                                    <span className="block font-medium">Public Space</span>
+                                    <span className="mt-0.5 block text-xs text-slate-500">
+                                        Visible to people with access to your organization.
+                                    </span>
+                                </span>
                             </label>
-                            <label className="flex items-center gap-2 text-sm text-slate-700">
+                            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50">
                                 <input
                                     type="checkbox"
                                     checked={spaceForm.is_active}
@@ -416,7 +457,12 @@ export default function SpacesPage() {
                                     }
                                     className="accent-orange-600"
                                 />
-                                Active
+                                <span>
+                                    <span className="block font-medium">Active</span>
+                                    <span className="mt-0.5 block text-xs text-slate-500">
+                                        Available for new communications.
+                                    </span>
+                                </span>
                             </label>
                         </div>
 
@@ -443,12 +489,17 @@ export default function SpacesPage() {
                     {selectedSpace && (
                         <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
                             <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div className="flex items-center gap-2">
-                                    <Users className="size-5 text-orange-600" />
-                                    <h2 className="font-semibold text-slate-950">Members</h2>
-                                    <span className="text-sm text-slate-500">
-                                        ({members.length})
-                                    </span>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <Users className="size-5 text-orange-600" />
+                                        <h2 className="font-semibold text-slate-950">Members</h2>
+                                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                                            {members.length}
+                                        </span>
+                                    </div>
+                                    <p className="mt-1 text-sm text-slate-500">
+                                        Add people individually or import a CSV list.
+                                    </p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
@@ -476,40 +527,58 @@ export default function SpacesPage() {
 
                             <form
                                 onSubmit={handleAddMember}
-                                className="grid gap-3 rounded-lg bg-slate-50 p-3 sm:grid-cols-[1fr_1fr_150px_auto]"
+                                className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_180px_auto]"
                             >
-                                <input
-                                    aria-label="Member name"
-                                    placeholder="Name"
-                                    value={memberName}
-                                    onChange={(event) => setMemberName(event.target.value)}
-                                    className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
-                                />
-                                <input
-                                    aria-label="Member phone number"
-                                    placeholder="Phone number"
-                                    type="tel"
-                                    required
-                                    value={memberPhone}
-                                    onChange={(event) => setMemberPhone(event.target.value)}
-                                    className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
-                                />
-                                <select
-                                    aria-label="Member role"
-                                    value={memberRole}
-                                    onChange={(event) => setMemberRole(event.target.value)}
-                                    className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
-                                >
-                                    <option value="member">Member</option>
-                                    <option value="admin">Administrator</option>
-                                    <option value="communications">Communications</option>
-                                    <option value="secretary">Secretary</option>
-                                </select>
+                                <div>
+                                    <label htmlFor="member-name" className="mb-1 block text-xs font-medium text-slate-700">
+                                        Full name
+                                    </label>
+                                    <input
+                                        id="member-name"
+                                        placeholder="e.g. Alex Namara"
+                                        autoComplete="name"
+                                        value={memberName}
+                                        onChange={(event) => setMemberName(event.target.value)}
+                                        className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="member-phone" className="mb-1 block text-xs font-medium text-slate-700">
+                                        Phone number <span className="text-red-600">*</span>
+                                    </label>
+                                    <input
+                                        id="member-phone"
+                                        placeholder="e.g. 07XX XXX XXX"
+                                        type="tel"
+                                        autoComplete="tel"
+                                        required
+                                        value={memberPhone}
+                                        onChange={(event) => setMemberPhone(event.target.value)}
+                                        className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="member-role" className="mb-1 block text-xs font-medium text-slate-700">
+                                        Role
+                                    </label>
+                                    <select
+                                        id="member-role"
+                                        value={memberRole}
+                                        onChange={(event) => setMemberRole(event.target.value)}
+                                        className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                                    >
+                                        <option value="member">Member</option>
+                                        <option value="admin">Administrator</option>
+                                        <option value="communications">Communications</option>
+                                        <option value="secretary">Secretary</option>
+                                    </select>
+                                </div>
                                 <button
                                     type="submit"
-                                    className="rounded-md bg-orange-600 px-3 py-2 text-sm font-semibold text-white hover:bg-orange-700"
+                                    disabled={savingMember}
+                                    className="self-end rounded-md bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                    Add member
+                                    {savingMember ? "Adding..." : "Add member"}
                                 </button>
                             </form>
 
