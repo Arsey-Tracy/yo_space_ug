@@ -45,7 +45,7 @@ const groups = [
     {
         label: "Setting", 
         items: [
-            {label: "Settings", href: "/app/analytics", icon: Settings2},
+            {label: "Settings", href: "/app/settings", icon: Settings2},
         ],
     },
      {

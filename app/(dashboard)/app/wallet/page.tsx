@@ -67,6 +67,9 @@ export default function WalletPage() {
     const [paymentReference, setPaymentReference] = useState("");
     const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | "">("");
     const [notice, setNotice] = useState("");
+    const latestTopUp = transactions.find(
+        (transaction) => transaction.transaction_type === "topup" && transaction.credits_added > 0,
+    );
 
     const loadWallet = useCallback(async () => {
         const [walletResponse, bundleResponse, transactionResponse] = await Promise.all([
@@ -119,6 +122,11 @@ export default function WalletPage() {
                 if (!active) return;
                 setPaymentStatus(result.status);
                 if (result.status === "completed") {
+                    setBalance((current) =>
+                        current
+                            ? { ...current, sms_balance: result.wallet_balance }
+                            : current,
+                    );
                     setNotice("Payment received. Your SMS credits are now in your wallet.");
                     await loadWallet();
                 } else if (result.status === "failed" || result.status === "cancelled") {
@@ -220,13 +228,17 @@ export default function WalletPage() {
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-5">
                     <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-slate-500">Cash balance</p>
+                        <p className="text-sm font-medium text-slate-500">Latest top-up</p>
                         <CircleDollarSign className="size-5 text-orange-600" />
                     </div>
                     <p className="mt-4 text-3xl font-semibold text-slate-950">
-                        {loading ? "…" : formatUGX(balance?.cash_balance_ugx ?? 0)}
+                        {loading ? "…" : latestTopUp ? formatUGX(latestTopUp.amount_paid_ugx) : "UGX 0"}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">Available wallet cash</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                        {latestTopUp
+                            ? `${latestTopUp.credits_added.toLocaleString()} SMS credits added`
+                            : "Top-ups are converted to SMS credits after payment."}
+                    </p>
                 </div>
             </section>
 
